@@ -14,7 +14,7 @@ import { cn } from '@/lib/utils';
 
 const navItems = [
   { name: '홈', href: '/home', icon: Home },
-  { name: '심층 분석', href: '/analysis', icon: BarChart3 },
+  { name: 'AI 시장 분석', href: '/analysis', icon: BarChart3 },
   { name: '분석 리포트', href: '/reports', icon: FileText },
   { name: '피드', href: '/insights', icon: MessageSquare },
 ];

@@ -1,59 +1,124 @@
+import os
 import yfinance as yf
 import pandas as pd
+import xgboost as xgb
+import joblib
+import numpy as np
+from datetime import datetime
 from supabase import create_client, Client
-import os
-from datetime import datetime, timedelta
+from dotenv import load_dotenv
+from ai_utils import calculate_indicators, get_model_path
 
-# Supabase Credentials (환경 변수 또는 설정 파일에서 로드 권장)
-SUPABASE_URL = "YOUR_SUPABASE_URL"
-SUPABASE_KEY = "YOUR_SUPABASE_SERVICE_ROLE_KEY"
+# Load environment variables
+load_dotenv(dotenv_path=".env.local")
 
-supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
+url: str = os.environ.get("NEXT_PUBLIC_SUPABASE_URL")
+key: str = os.environ.get("NEXT_PUBLIC_SUPABASE_ANON_KEY")
+supabase: Client = create_client(url, key)
 
-def fetch_and_sync_market_data(symbols=["GDXU", "GDXY", "GDX", "GC=F"]):
-    """
-    yfinance에서 데이터를 가져와 Supabase market_data 테이블에 업서트합니다.
-    """
-    print(f"[{datetime.now()}] 실시간 데이터 동기화 시작...")
-    
-    for symbol in symbols:
-        try:
-            # 최근 1일치 1분 단위 데이터 (또는 필요에 따라 변경)
-            ticker = yf.Ticker(symbol)
-            df = ticker.history(period="1d", interval="1m")
+SYMBOLS = ["GDXU", "GLD", "GDX", "GC=F"]
+
+def scrape_data():
+    """야후 파이낸스에서 데이터를 긁어와 이격도까지 계산하여 DB에 영구 저장"""
+    for symbol in SYMBOLS:
+        for interval_key, interval in [("5m", "5m"), ("1h", "1h"), ("1d", "1d")]:
+            try:
+                ticker = yf.Ticker(symbol)
+                period = "60d" if interval == "5m" else "max"
+                df = ticker.history(period=period, interval=interval)
+                
+                if df.empty:
+                    continue
+
+                # 📊 핵심: 이격도 및 이평선 데이터 실시간 생성
+                df = calculate_indicators(df)
+                
+                # 최적화된 Batch Upsert 진행
+                batch_data = []
+                for index, row in df.iterrows():
+                    data = {
+                        "symbol": symbol,
+                        "interval": interval,
+                        "timestamp": index.isoformat(),
+                        "open": float(row["Open"]),
+                        "high": float(row["High"]),
+                        "low": float(row["Low"]),
+                        "close": float(row["Close"]),
+                        "volume": int(row["Volume"]) if not np.isnan(row["Volume"]) else 0,
+                        "ma20": float(row["ma20"]) if not np.isnan(row["ma20"]) else None,
+                        "ma60": float(row["ma60"]) if not np.isnan(row["ma60"]) else None,
+                        "gap_ma20": float(row["gap_ma20"]) if not np.isnan(row["gap_ma20"]) else None,
+                        "gap_ma60": float(row["gap_ma60"]) if not np.isnan(row["gap_ma60"]) else None
+                    }
+                    batch_data.append(data)
+                
+                if batch_data:
+                    supabase.table("market_data").upsert(
+                        batch_data, 
+                        on_conflict="symbol,interval,timestamp"
+                    ).execute()
+
+                print(f"✅ [{symbol}] {interval} - {len(batch_data)} rows persisted (Batch Upsert).")
+
+                # 🤖 3개 모델에 대한 AI 추론 진행 (동일하게 유지)
+                if symbol == "GDXU":
+                    run_inference(symbol, interval, df)
+
+            except Exception as e:
+                print(f"❌ Error scraping {symbol} ({interval}): {e}")
+
+def run_inference(symbol, interval, df):
+    """3개의 독립 AI 모델로부터 예측치를 산출하여 DB 저장"""
+    try:
+        # 모델 1 (Multi-Step Price & MA Path)
+        m1_path = get_model_path(symbol, interval, 1)
+        # 모델 2, 3 (Gap 전문 모델)
+        m2_path = get_model_path(symbol, interval, 2)
+        m3_path = get_model_path(symbol, interval, 3)
+
+        def predict_for_model(model_path, name):
+            if not os.path.exists(model_path):
+                return
+            model = joblib.load(model_path)
             
-            if df.empty:
-                print(f"Skipping {symbol}: No data found.")
-                continue
-
-            # Supabase 저장용 데이터 변환
-            # GC=F(금 선물)의 경우 DB에는 GOLD로 저장하도록 매핑 예시
-            db_symbol = "GOLD" if symbol == "GC=F" else symbol
+            # 마지막 시점의 피처 추출 (7개 규격: returns, rsi, volatility, gap_ma20, gap_ma60, ma20, ma60)
+            last_row = df.iloc[-1]
+            features = np.array([[
+                last_row['returns'], last_row['rsi'], last_row['volatility'],
+                last_row['gap_ma20'], last_row['gap_ma60'],
+                last_row['ma20'], last_row['ma60']
+            ]])
             
-            data_to_upsert = []
-            for index, row in df.iterrows():
-                data_to_upsert.append({
-                    "symbol": db_symbol,
-                    "timestamp": index.isoformat(),
-                    "open": float(row["Open"]),
-                    "high": float(row["High"]),
-                    "low": float(row["Low"]),
-                    "close": float(row["Close"]),
-                    "volume": int(row["Volume"]) if not pd.isna(row["Volume"]) else 0
-                })
-
-            # 테이블에 Upsert (symbol, timestamp 기준 UNIQUE 제약 필요)
-            # Supabase Python SDK의 upsert는 on_conflict=None면 기본 PK 기준이나 
-            # market_data에는 (symbol, timestamp) 유니크 인덱스가 설정되어 있어야 함
-            result = supabase.table("market_data").upsert(
-                data_to_upsert, 
-                on_conflict="symbol,timestamp"
-            ).execute()
+            pred = model.predict(features)[0]
             
-            print(f"Successfully synced {len(data_to_upsert)} rows for {db_symbol}")
+            # 타겟 데이터 구조화 (3일치 예측 등)
+            targets = []
+            for i in range(1, 4):
+                if name == "Model 2 (ma20 Gap)":
+                    targets.append({"gap_return": float(pred[i-1]) if hasattr(pred, '__len__') else float(pred)})
+                elif name == "Model 3 (ma60 Gap)":
+                    targets.append({"gap_return": float(pred[i-1]) if hasattr(pred, '__len__') else float(pred)})
+                else: # Model 1
+                    targets.append({
+                        "predicted_return": float(pred[i-1]),
+                        "ma20_return": float(pred[i+2]),
+                        "ma60_return": float(pred[i+5])
+                    })
 
-        except Exception as e:
-            print(f"Error syncing {symbol}: {str(e)}")
+            supabase.table("predictions").insert({
+                "symbol": symbol,
+                "interval": interval,
+                "model_name": name,
+                "prediction_data": {"targets": targets},
+                "confidence": 0.85
+            }).execute()
+
+        predict_for_model(m1_path, "Model 1 (Multi-Step)")
+        predict_for_model(m2_path, "Model 2 (ma20 Gap)")
+        predict_for_model(m3_path, "Model 3 (ma60 Gap)")
+
+    except Exception as e:
+        print(f"🤖 Inference Error: {e}")
 
 if __name__ == "__main__":
-    fetch_and_sync_market_data()
+    scrape_data()
