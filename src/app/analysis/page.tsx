@@ -96,7 +96,7 @@ export default function AnalysisPage() {
               <div className="flex items-center space-x-4">
                 <div className={cn("w-3 h-3 rounded-full animate-pulse", viewMode === 'price' ? "bg-brand" : "bg-yellow-400")} />
                 <h2 className="text-2xl font-bold text-white tracking-tight">
-                  {viewMode === 'price' ? `${selectedSymbol} 가격 추세 분석` : `${selectedSymbol} 이평선 이격도 분석`}
+                  {viewMode === 'price' ? `${selectedSymbol} 가격 추세 분석(5분봉은 예측 X)` : `${selectedSymbol} 이평선 이격도 분석`}
                 </h2>
               </div>
               <div className="flex items-center space-x-2">
