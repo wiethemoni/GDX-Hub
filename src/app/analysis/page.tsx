@@ -153,7 +153,7 @@ export default function AnalysisPage() {
                       <div className="flex items-center space-x-2">
                         <span className="text-[10px] font-bold text-slate-500 flex items-center">
                           <Target className="w-3 h-3 mr-1" />
-                          SCORE
+                          정확도
                         </span>
                         <span className={cn(
                           "text-xs font-black",
