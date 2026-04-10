@@ -3,11 +3,11 @@
 import { useState, useEffect } from 'react';
 import MarketChartContainer from '@/components/chart/MarketChartContainer';
 import { supabase } from '@/lib/supabase';
-import { 
-  Plus, 
-  LayoutGrid, 
-  Settings2, 
-  Cpu, 
+import {
+  Plus,
+  LayoutGrid,
+  Settings2,
+  Cpu,
   ChevronRight,
   TrendingUp,
   Target
@@ -21,29 +21,29 @@ export default function AnalysisPage() {
   const [realStats, setRealStats] = useState<any>(null);
 
   const models = [
-    { 
-      id: 1, 
-      model_name: 'Model 1', 
+    {
+      id: 1,
+      model_name: 'Model 1',
       full_name: 'Model 1 (Multi-Step)',
-      signal_type: 'safe', 
-      confidence: 0.55, 
-      description: '최근 시세 흐름과 이평선의 추세를 분석하여 향후 3일의 가격과 이평선 위치를 다단계로 예측합니다.' 
+      signal_type: 'safe',
+      confidence: 0.55,
+      description: '최근 시세 흐름과 이평선의 추세를 분석하여 향후 3일의 가격과 이평선 위치를 다단계로 예측합니다.'
     },
-    { 
-      id: 2, 
-      model_name: 'Model 2', 
+    {
+      id: 2,
+      model_name: 'Model 2',
       full_name: 'Model 2 (ma20 Gap)',
-      signal_type: 'safe', 
-      confidence: 0.60, 
-      description: 'AI가 예측한 20일 이평선 경로에, 모델 2가 예측한 "20일 이격 회복률"을 반영하여 최종 가격을 산출합니다.' 
+      signal_type: 'safe',
+      confidence: 0.60,
+      description: 'AI가 예측한 20일 이평선 경로에, 모델 2가 예측한 "20일 이격 회복률"을 반영하여 최종 가격을 산출합니다.'
     },
-    { 
-      id: 3, 
-      model_name: 'Model 3', 
+    {
+      id: 3,
+      model_name: 'Model 3',
       full_name: 'Model 3 (ma60 Gap)',
-      signal_type: 'safe', 
-      confidence: 0.58, 
-      description: 'AI가 예측한 60일 이평선 경로에, 모델 3이 예측한 "60일 이격 회복률"을 반영하여 최종 가격을 산출합니다.' 
+      signal_type: 'safe',
+      confidence: 0.58,
+      description: 'AI가 예측한 60일 이평선 경로에, 모델 3이 예측한 "60일 이격 회복률"을 반영하여 최종 가격을 산출합니다.'
     },
   ];
 
@@ -63,7 +63,7 @@ export default function AnalysisPage() {
                   : "text-slate-500 hover:text-slate-300"
               )}
             >
-              GDXU (3x Bull)
+              GDXU (3x)
             </button>
             <button
               onClick={() => setViewMode('disparity')}
@@ -96,7 +96,7 @@ export default function AnalysisPage() {
               <div className="flex items-center space-x-4">
                 <div className={cn("w-3 h-3 rounded-full animate-pulse", viewMode === 'price' ? "bg-brand" : "bg-yellow-400")} />
                 <h2 className="text-2xl font-bold text-white tracking-tight">
-                    {viewMode === 'price' ? `${selectedSymbol} 가격 추세 분석` : `${selectedSymbol} 이평선 이격도 분석`}
+                  {viewMode === 'price' ? `${selectedSymbol} 가격 추세 분석` : `${selectedSymbol} 이평선 이격도 분석`}
                 </h2>
               </div>
               <div className="flex items-center space-x-2">
@@ -124,7 +124,7 @@ export default function AnalysisPage() {
               </div>
               <h2 className="text-xl font-bold text-white">AI 모델 리스트</h2>
             </div>
-            
+
             <div className="space-y-4">
               {models.map((model) => (
                 <button
@@ -151,21 +151,21 @@ export default function AnalysisPage() {
                         {model.model_name}
                       </span>
                       <div className="flex items-center space-x-2">
-                         <span className="text-[10px] font-bold text-slate-500 flex items-center">
-                            <Target className="w-3 h-3 mr-1" />
-                            SCORE
-                         </span>
-                         <span className={cn(
-                            "text-xs font-black",
-                            model.confidence > 0.58 ? "text-emerald-400" : "text-brand"
-                         )}>
-                            {(model.confidence * 100).toFixed(1)}%
-                         </span>
+                        <span className="text-[10px] font-bold text-slate-500 flex items-center">
+                          <Target className="w-3 h-3 mr-1" />
+                          SCORE
+                        </span>
+                        <span className={cn(
+                          "text-xs font-black",
+                          model.confidence > 0.58 ? "text-emerald-400" : "text-brand"
+                        )}>
+                          {(model.confidence * 100).toFixed(1)}%
+                        </span>
                       </div>
                     </div>
 
                     <h3 className="text-white font-bold text-lg mb-2 group-hover:text-brand transition-colors">{model.full_name}</h3>
-                    
+
                     <p className="text-sm text-slate-500 leading-relaxed group-hover:text-slate-400">
                       {model.description}
                     </p>
