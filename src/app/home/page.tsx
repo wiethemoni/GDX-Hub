@@ -44,33 +44,33 @@ export default function HomePage() {
       </header>
 
       <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <MarketCard 
-          symbol="GDXU" 
-          name="금광주 3x 레버리지" 
-          price="34.20" 
-          change="3.45" 
-          isPositive={true} 
+        <MarketCard
+          symbol="GDXU"
+          name="금광주 3x 레버리지"
+          price="34.20"
+          change="3.45"
+          isPositive={true}
         />
-        <MarketCard 
-          symbol="GDXY" 
-          name="금광주 3x 인버스" 
-          price="12.45" 
-          change="-9.21" 
-          isPositive={false} 
+        <MarketCard
+          symbol="GDXY"
+          name="금광 배당주"
+          price="12.45"
+          change="-9.21"
+          isPositive={false}
         />
-        <MarketCard 
-          symbol="GDX" 
-          name="금광주 ETF (Spot)" 
-          price="28.90" 
-          change="1.15" 
-          isPositive={true} 
+        <MarketCard
+          symbol="GDX"
+          name="금광주 ETF (Spot)"
+          price="28.90"
+          change="1.15"
+          isPositive={true}
         />
-        <MarketCard 
-          symbol="XAUUSD" 
-          name="금 현물 (Gold)" 
-          price="2,345.10" 
-          change="0.45" 
-          isPositive={true} 
+        <MarketCard
+          symbol="XAUUSD"
+          name="금 현물 (Gold)"
+          price="2,345.10"
+          change="0.45"
+          isPositive={true}
         />
       </section>
 
